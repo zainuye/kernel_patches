@@ -1,71 +1,6 @@
-From f7d6c540337bc2579d3493a3f842e72cd49c17ee Mon Sep 17 00:00:00 2001
-From: "env." <162432464+belowzeroiq@users.noreply.github.com>
-Date: Thu, 3 Jul 2025 23:04:56 +0700
-Subject: [PATCH] SUSFS: syscall hooks
-
----
- drivers/input/input.c | 10 ++++++++++
- drivers/tty/pty.c     |  7 +++++++
- fs/exec.c             | 18 ++++++++++++++++++
- fs/open.c             |  8 ++++++++
- fs/read_write.c       | 10 ++++++++++
- fs/stat.c             | 10 ++++++++++
- 6 files changed, 63 insertions(+)
-
-diff --git a/drivers/input/input.c b/drivers/input/input.c
-index 171f71bd4c2a..8258f0a306e4 100644
---- a/drivers/input/input.c
-+++ b/drivers/input/input.c
-@@ -446,11 +446,21 @@ static void input_handle_event(struct input_dev *dev,
-  * to 'seed' initial state of a switch or initial position of absolute
-  * axis, etc.
-  */
-+#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
-+extern bool ksu_input_hook __read_mostly;
-+extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
-+#endif
-+
- void input_event(struct input_dev *dev,
- 		 unsigned int type, unsigned int code, int value)
- {
- 	unsigned long flags;
- 
-+#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
-+	if (unlikely(ksu_input_hook))
-+		ksu_handle_input_handle_event(&type, &code, &value);
-+#endif
-+
- 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
- 
- 		spin_lock_irqsave(&dev->event_lock, flags);
-diff --git a/drivers/tty/pty.c b/drivers/tty/pty.c
-index 752dab3356d7..15bc64d77bed 100644
---- a/drivers/tty/pty.c
-+++ b/drivers/tty/pty.c
-@@ -702,11 +702,18 @@ static struct tty_struct *ptm_unix98_lookup(struct tty_driver *driver,
-  *	This provides our locking for the tty pointer.
-  */
- 
-+#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
-+extern int ksu_handle_devpts(struct inode*);
-+#endif
-+
- static struct tty_struct *pts_unix98_lookup(struct tty_driver *driver,
- 		struct file *file, int idx)
- {
- 	struct tty_struct *tty;
- 
-+#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
-+	ksu_handle_devpts((struct inode *)file->f_path.dentry->d_inode);
-+#endif
- 	mutex_lock(&devpts_mutex);
- 	tty = devpts_get_priv(file->f_path.dentry);
- 	mutex_unlock(&devpts_mutex);
-diff --git a/fs/exec.c b/fs/exec.c
-index 50bad113fc50..c160d0e230a6 100644
---- a/fs/exec.c
-+++ b/fs/exec.c
-@@ -2042,12 +2042,26 @@ int kernel_execve(const char *kernel_filename,
+--- a/fs/exec.c	2025-02-25 16:26:47.929599800 -0500
++++ b/fs/exec.c	2025-02-25 16:31:09.392181069 -0500
+@@ -2025,12 +2025,26 @@
  	return retval;
  }
  
@@ -92,7 +27,7 @@ index 50bad113fc50..c160d0e230a6 100644
  	return do_execveat_common(AT_FDCWD, filename, argv, envp, 0);
  }
  
-@@ -2075,6 +2089,10 @@ static int compat_do_execve(struct filename *filename,
+@@ -2058,6 +2072,10 @@
  		.is_compat = true,
  		.ptr.compat = __envp,
  	};
@@ -103,11 +38,9 @@ index 50bad113fc50..c160d0e230a6 100644
  	return do_execveat_common(AT_FDCWD, filename, argv, envp, 0);
  }
  
-diff --git a/fs/open.c b/fs/open.c
-index a45bc43ed9f4..2a66f23e62fb 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -478,8 +478,16 @@ static long do_faccessat(int dfd, const char __user *filename, int mode, int fla
+--- a/fs/open.c	2025-02-25 16:26:48.056318400 -0500
++++ b/fs/open.c	2025-02-25 16:33:35.583177999 -0500
+@@ -466,8 +466,16 @@
  	return res;
  }
  
@@ -124,11 +57,9 @@ index a45bc43ed9f4..2a66f23e62fb 100644
  	return do_faccessat(dfd, filename, mode, 0);
  }
  
-diff --git a/fs/read_write.c b/fs/read_write.c
-index 3f68186207a9..59becffa23a6 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -628,8 +628,18 @@ ssize_t ksys_read(unsigned int fd, char __user *buf, size_t count)
+--- a/fs/read_write.c	2025-02-25 16:26:48.085561100 -0500
++++ b/fs/read_write.c	2025-02-25 16:34:38.409673281 -0500
+@@ -628,8 +628,18 @@
  	return ret;
  }
  
@@ -147,11 +78,9 @@ index 3f68186207a9..59becffa23a6 100644
  	return ksys_read(fd, buf, count);
  }
  
-diff --git a/fs/stat.c b/fs/stat.c
-index 6383203890fc..092791e0abdf 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -442,6 +442,10 @@ SYSCALL_DEFINE2(newlstat, const char __user *, filename,
+--- a/fs/stat.c	2025-02-25 16:26:48.095308700 -0500
++++ b/fs/stat.c	2025-02-25 16:40:30.177700209 -0500
+@@ -401,6 +401,10 @@
  	return cp_new_stat(&stat, statbuf);
  }
  
@@ -162,7 +91,7 @@ index 6383203890fc..092791e0abdf 100644
  #if !defined(__ARCH_WANT_STAT64) || defined(__ARCH_WANT_SYS_NEWFSTATAT)
  SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
  		struct stat __user *, statbuf, int, flag)
-@@ -449,6 +453,9 @@ SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
+@@ -408,6 +412,9 @@
  	struct kstat stat;
  	int error;
  
@@ -172,7 +101,7 @@ index 6383203890fc..092791e0abdf 100644
  	error = vfs_fstatat(dfd, filename, &stat, flag);
  	if (error)
  		return error;
-@@ -600,6 +607,9 @@ SYSCALL_DEFINE4(fstatat64, int, dfd, const char __user *, filename,
+@@ -559,6 +566,9 @@
  	struct kstat stat;
  	int error;
  
@@ -182,6 +111,48 @@ index 6383203890fc..092791e0abdf 100644
  	error = vfs_fstatat(dfd, filename, &stat, flag);
  	if (error)
  		return error;
--- 
-2.50.0
-
+--- a/drivers/input/input.c	2025-02-25 16:26:13.021725500 -0500
++++ b/drivers/input/input.c	2025-02-25 16:47:15.869567274 -0500
+@@ -446,11 +446,21 @@
+  * to 'seed' initial state of a switch or initial position of absolute
+  * axis, etc.
+  */
++#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
++extern bool ksu_input_hook __read_mostly;
++extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
++#endif
++
+ void input_event(struct input_dev *dev,
+ 		 unsigned int type, unsigned int code, int value)
+ {
+ 	unsigned long flags;
+ 
++#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
++	if (unlikely(ksu_input_hook))
++		ksu_handle_input_handle_event(&type, &code, &value);
++#endif
++
+ 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
+ 
+ 		spin_lock_irqsave(&dev->event_lock, flags);
+--- a/drivers/tty/pty.c	2025-02-25 16:26:47.666415400 -0500
++++ b/drivers/tty/pty.c	2025-02-25 16:50:08.191037416 -0500
+@@ -702,11 +702,18 @@
+  *	This provides our locking for the tty pointer.
+  */
+ 
++#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
++extern int ksu_handle_devpts(struct inode*);
++#endif
++
+ static struct tty_struct *pts_unix98_lookup(struct tty_driver *driver,
+ 		struct file *file, int idx)
+ {
+ 	struct tty_struct *tty;
+ 
++#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
++	ksu_handle_devpts((struct inode *)file->f_path.dentry->d_inode);
++#endif
+ 	mutex_lock(&devpts_mutex);
+ 	tty = devpts_get_priv(file->f_path.dentry);
+ 	mutex_unlock(&devpts_mutex);
