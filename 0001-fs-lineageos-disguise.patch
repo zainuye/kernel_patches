@@ -1,7 +1,7 @@
-From ec62a70f676055516790a9df1dac4276e2456b48 Mon Sep 17 00:00:00 2001
-From: "backslashxx" <118538522+backslashxx@users.noreply.github.com>
-Date: Wed, 30 Apr 2025 02:00:45 +0700
-Subject: [PATCH] fs: lineageos disguise
+From 7005c9341d6d406013b1f860de3dae95a99b49d1 Mon Sep 17 00:00:00 2001
+From: "env." <162432464+belowzeroiq@users.noreply.github.com>
+Date: Sat, 3 Jan 2026 09:25:12 +0000
+Subject: [PATCH] lineage disguise
 
 ---
  fs/proc/base.c     | 16 +++++++++++-----
@@ -9,10 +9,10 @@ Subject: [PATCH] fs: lineageos disguise
  2 files changed, 47 insertions(+), 5 deletions(-)
 
 diff --git a/fs/proc/base.c b/fs/proc/base.c
-index 211e330c0a813..2c71e0baad6f4 100644
+index 040cec65c1cbe..a953a18c4f5a6 100644
 --- a/fs/proc/base.c
 +++ b/fs/proc/base.c
-@@ -2276,11 +2276,17 @@ static int map_files_get_link(struct dentry *dentry, struct path *path)
+@@ -2299,11 +2299,17 @@ static int map_files_get_link(struct dentry *dentry, struct path *path)
  
  	rc = -ENOENT;
  	vma = find_exact_vma(mm, vm_start, vm_end);
@@ -36,7 +36,7 @@ index 211e330c0a813..2c71e0baad6f4 100644
  
  out_mmput:
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index 13d8c0df8fb12..6011892372a74 100644
+index a7bbcbfdb79f3..8145aefab841b 100644
 --- a/fs/proc/task_mmu.c
 +++ b/fs/proc/task_mmu.c
 @@ -276,6 +276,23 @@ static void show_vma_header_prefix(struct seq_file *m,
@@ -71,7 +71,7 @@ index 13d8c0df8fb12..6011892372a74 100644
  
  	if (file) {
  		struct inode *inode = file_inode(vma->vm_file);
-@@ -302,12 +320,30 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma)
+@@ -320,12 +338,30 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma)
  bypass_orig_flow:
  #endif
  		pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;
@@ -95,7 +95,7 @@ index 13d8c0df8fb12..6011892372a74 100644
  	}
  
  	start = vma->vm_start;
- 	end = vma->vm_end;
+ 	end = VMA_PAD_START(vma);
  	show_vma_header_prefix(m, start, end, flags, pgoff, dev, ino);
  
 +	bypass:
@@ -103,5 +103,5 @@ index 13d8c0df8fb12..6011892372a74 100644
  	 * Print the dentry name for named mappings, and a
  	 * special [heap] marker for the heap:
 -- 
-2.49.0
+2.52.0
 
